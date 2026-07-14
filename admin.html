@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Rep Booking Link</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12312E;
+    --ink-soft:#4B5F5C;
+    --paper:#F1F3EE;
+    --paper-raised:#FFFFFF;
+    --teal-deep:#144B48;
+    --pulse:#B23A48;
+    --line:rgba(18,49,46,0.14);
+    --shadow: 0 24px 48px -28px rgba(18,49,46,0.22);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif; line-height:1.6;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .panel{
+    width:100%; max-width:460px; background:var(--paper-raised);
+    border:1px solid var(--line); border-radius:6px; box-shadow:var(--shadow);
+    padding:40px 36px;
+  }
+  h1{
+    font-family:'Fraunces', serif; font-weight:500; font-size:1.5rem;
+    margin-bottom:6px;
+  }
+  .sub{color:var(--ink-soft); font-size:0.92rem; margin-bottom:28px;}
+  .field{margin-bottom:18px;}
+  label{
+    display:block; font-family:'IBM Plex Mono', monospace; font-size:0.72rem;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:7px;
+  }
+  input{
+    width:100%; background:var(--paper-raised); border:1px solid var(--line);
+    border-radius:3px; padding:12px 14px; font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.98rem; color:var(--ink); transition:border-color 0.2s;
+  }
+  input:focus{outline:none; border-color:var(--teal-deep);}
+  button{
+    width:100%; background:var(--teal-deep); color:#fff; border:none;
+    padding:13px 20px; border-radius:3px; font-size:0.95rem;
+    font-family:'IBM Plex Sans', sans-serif; letter-spacing:0.01em;
+    cursor:pointer; transition:background 0.2s; margin-top:6px;
+  }
+  button:hover{background:var(--pulse);}
+  button:disabled{opacity:0.6; cursor:not-allowed;}
+  .msg{
+    margin-top:16px; font-size:0.88rem; padding:12px 14px; border-radius:3px;
+    display:none;
+  }
+  .msg.show{display:block;}
+  .msg.error{background:rgba(178,58,72,0.08); color:var(--pulse); border-left:2px solid var(--pulse);}
+  .msg.success{background:rgba(31,111,107,0.08); color:var(--teal-deep); border-left:2px solid var(--teal-deep);}
+  .divider{border-top:1px solid var(--line); margin:28px 0;}
+  .current{font-size:0.85rem; color:var(--ink-soft); margin-bottom:20px; word-break:break-all;}
+  .current strong{color:var(--ink); display:block; margin-bottom:4px; font-weight:600;}
+  .logout{
+    display:block; text-align:center; margin-top:18px; font-size:0.85rem;
+    color:var(--ink-soft); cursor:pointer; text-decoration:underline;
+  }
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <!-- LOGIN VIEW -->
+  <div id="login-view">
+    <h1>Admin Login</h1>
+    <p class="sub">Sign in to edit the medical representative booking link.</p>
+    <form id="login-form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" required autocomplete="current-password">
+      </div>
+      <button type="submit" id="login-btn">Sign In</button>
+    </form>
+    <div class="msg" id="login-msg"></div>
+  </div>
+
+  <!-- EDIT VIEW -->
+  <div id="edit-view" class="hidden">
+    <h1>Rep Booking Link</h1>
+    <p class="sub">Update the monthly link and label shown on the website.</p>
+    <div class="current" id="current-box"></div>
+    <div class="divider"></div>
+    <form id="edit-form">
+      <div class="field">
+        <label for="url">Booking URL</label>
+        <input type="url" id="url" required placeholder="https://dradarshkvenuraj.dayschedule.com/august2026">
+      </div>
+      <div class="field">
+        <label for="label">Display Label</label>
+        <input type="text" id="label" required placeholder="Open for August 2026">
+      </div>
+      <button type="submit" id="save-btn">Save Changes</button>
+    </form>
+    <div class="msg" id="edit-msg"></div>
+    <span class="logout" id="logout-btn">Sign out</span>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script>
+  var SUPABASE_URL = "https://ikrvqhuwhwahnyiozxci.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrcnZxaHV3aHdhaG55aW96eGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzQyMjQsImV4cCI6MjA5OTYxMDIyNH0.uFJwXhHOxsaSwF2VtPXMHTSnJRcTKgpeas30oqTyqKg";
+
+  var sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  var loginView = document.getElementById('login-view');
+  var editView = document.getElementById('edit-view');
+  var loginMsg = document.getElementById('login-msg');
+  var editMsg = document.getElementById('edit-msg');
+
+  function showMsg(el, text, type){
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+
+  async function loadCurrentLink(){
+    var { data, error } = await sb.from('booking_link').select('*').eq('id', 1).single();
+    if(error){
+      showMsg(editMsg, 'Could not load current link: ' + error.message, 'error');
+      return;
+    }
+    document.getElementById('url').value = data.url;
+    document.getElementById('label').value = data.label;
+    document.getElementById('current-box').innerHTML =
+      '<strong>Currently live</strong>' + data.label + ' → ' + data.url;
+  }
+
+  async function checkSession(){
+    var { data } = await sb.auth.getSession();
+    if(data.session){
+      loginView.classList.add('hidden');
+      editView.classList.remove('hidden');
+      loadCurrentLink();
+    } else {
+      loginView.classList.remove('hidden');
+      editView.classList.add('hidden');
+    }
+  }
+
+  document.getElementById('login-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var btn = document.getElementById('login-btn');
+    btn.disabled = true; btn.textContent = 'Signing in…';
+    var email = document.getElementById('email').value.trim();
+    var password = document.getElementById('password').value;
+
+    try {
+      var res = await fetch(SUPABASE_URL + '/auth/v1/token?grant_type=password', {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: email, password: password })
+      });
+      var body = await res.json();
+      btn.disabled = false; btn.textContent = 'Sign In';
+
+      if(!res.ok){
+        showMsg(loginMsg, 'Sign in failed (' + res.status + '): ' + (body.error_description || body.msg || body.error || JSON.stringify(body)), 'error');
+        return;
+      }
+
+      // Manually set the session on the supabase client so the rest of the page works as before
+      await sb.auth.setSession({ access_token: body.access_token, refresh_token: body.refresh_token });
+      checkSession();
+    } catch(err){
+      btn.disabled = false; btn.textContent = 'Sign In';
+      showMsg(loginMsg, 'Network error: ' + (err && err.message ? err.message : String(err)), 'error');
+    }
+  });
+
+  document.getElementById('edit-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var btn = document.getElementById('save-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    var url = document.getElementById('url').value.trim();
+    var label = document.getElementById('label').value.trim();
+
+    var { error } = await sb.from('booking_link')
+      .update({ url: url, label: label, updated_at: new Date().toISOString() })
+      .eq('id', 1);
+
+    btn.disabled = false; btn.textContent = 'Save Changes';
+
+    if(error){
+      showMsg(editMsg, 'Save failed: ' + error.message, 'error');
+      return;
+    }
+    showMsg(editMsg, 'Saved. The website will show this link immediately.', 'success');
+    loadCurrentLink();
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', async function(){
+    await sb.auth.signOut();
+    checkSession();
+  });
+
+  checkSession();
+</script>
+
+</body>
+</html>
