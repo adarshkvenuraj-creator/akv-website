@@ -110,6 +110,32 @@
   }
   .hero .wrap{position:relative; z-index:1;}
   @media (max-width:980px){ .hero-deco{display:none;} }
+
+  .hero-grid{display:grid; grid-template-columns:1.15fr 0.85fr; gap:56px; align-items:center;}
+  .hero-photo-wrap{position:relative; justify-self:center;}
+  .hero-photo{
+    width:100%; max-width:340px; aspect-ratio:3/4; object-fit:cover; object-position:top;
+    border-radius:8px; box-shadow:var(--shadow-hover);
+    border:1px solid var(--line); display:block;
+    position:relative; z-index:1;
+  }
+  .hero-photo-frame{
+    position:absolute; top:18px; left:18px; width:100%; max-width:340px; height:100%;
+    border:1.5px solid var(--teal-deep); border-radius:8px; z-index:0;
+  }
+  .hero-photo-tag{
+    position:absolute; bottom:-16px; left:50%; transform:translateX(-50%);
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:6px;
+    box-shadow:var(--shadow); padding:10px 20px; z-index:2;
+    font-family:'IBM Plex Mono', monospace; font-size:0.72rem; letter-spacing:0.06em;
+    text-transform:uppercase; color:var(--teal-deep); white-space:nowrap;
+  }
+  @media (max-width:980px){
+    .hero-grid{grid-template-columns:1fr;}
+    .hero-photo-wrap{order:-1; margin-bottom:12px;}
+    .hero-photo{max-width:260px;}
+    .hero-photo-frame{max-width:260px;}
+  }
   .eyebrow{
     font-family:'IBM Plex Mono', monospace; font-size:0.78rem;
     letter-spacing:0.12em; text-transform:uppercase; color:var(--teal-deep);
@@ -423,27 +449,36 @@
     <path d="M20,100 L70,100 L80,80 L92,130 L104,60 L114,120 L124,100 L180,100" stroke="#B23A48" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
   <div class="wrap">
-    <div class="eyebrow">Internal Medicine · Cardiology · Diabetology · Infectious Diseases</div>
-    <h1>Dr. Adarsh K. Venuraj</h1>
-    <p class="hero-sub">A physician's practice built on evidence-based medicine and personalised treatment — for the heart, for blood sugar, and for the infections that complicate both.</p>
-    <div class="hero-actions">
-      <div class="book-dropdown">
-        <button type="button" class="btn-primary book-trigger">
-          Book Appointment
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
-        </button>
-        <div class="book-menu">
-          <button type="button" class="book-option" data-target="patient">
-            <span class="opt-title">For Patients</span>
-            <span class="opt-sub">Message Dr. Venuraj on WhatsApp</span>
-          </button>
-          <button type="button" class="book-option" data-target="rep">
-            <span class="opt-title">For Medical Representatives</span>
-            <span class="opt-sub">View this month's available slots</span>
-          </button>
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Internal Medicine · Cardiology · Diabetology · Infectious Diseases</div>
+        <h1>Dr. Adarsh K. Venuraj</h1>
+        <p class="hero-sub">A physician's practice built on evidence-based medicine and personalised treatment — for the heart, for blood sugar, and for the infections that complicate both.</p>
+        <div class="hero-actions">
+          <div class="book-dropdown">
+            <button type="button" class="btn-primary book-trigger">
+              Book Appointment
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="book-menu">
+              <button type="button" class="book-option" data-target="patient">
+                <span class="opt-title">For Patients</span>
+                <span class="opt-sub">Message Dr. Venuraj on WhatsApp</span>
+              </button>
+              <button type="button" class="book-option" data-target="rep">
+                <span class="opt-title">For Medical Representatives</span>
+                <span class="opt-sub">View this month's available slots</span>
+              </button>
+            </div>
+          </div>
+          <a href="#about" class="btn-ghost">Read the background →</a>
         </div>
       </div>
-      <a href="#about" class="btn-ghost">Read the background →</a>
+      <div class="hero-photo-wrap">
+        <div class="hero-photo-frame"></div>
+        <img src="doctor-photo.jpeg" alt="Dr. Adarsh K. Venuraj, Senior Consultant Physician" class="hero-photo">
+        <div class="hero-photo-tag">Senior Consultant Physician</div>
+      </div>
     </div>
   </div>
   <div class="ecg-wrap">
