@@ -814,13 +814,8 @@
           if(target === 'patient'){
             window.open(PATIENT_URL, '_blank', 'noopener');
           } else if(target === 'rep'){
-            var repLink = document.getElementById('rep-link');
-            if(repLink && repLink.href){
-              window.open(repLink.href, '_blank', 'noopener');
-            } else {
-              var repSection = document.getElementById('reps');
-              if(repSection){ repSection.scrollIntoView({ behavior: 'smooth' }); }
-            }
+            var repSection = document.getElementById('reps');
+            if(repSection){ repSection.scrollIntoView({ behavior: 'smooth' }); }
           }
         });
       });
