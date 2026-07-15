@@ -127,9 +127,20 @@
   /* HERO */
   .hero{padding:168px 0 64px; position:relative; overflow:hidden;}
   .hero-deco{
-    position:absolute; top:20px; right:-60px; width:220px; height:220px;
-    opacity:0.35; pointer-events:none; z-index:0;
-    object-fit:contain;
+    position:absolute; top:20px; right:-60px; width:300px; height:300px;
+    opacity:0.4; pointer-events:none; z-index:0;
+  }
+  .hero-ecg-path{
+    stroke-dasharray:40 260;
+    stroke-dashoffset:0;
+    animation:hero-pulse 2.8s linear infinite;
+  }
+  @keyframes hero-pulse{
+    0%{ stroke-dashoffset:300; }
+    100%{ stroke-dashoffset:-300; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .hero-ecg-path{ animation:none; }
   }
   .hero .wrap{position:relative; z-index:1;}
   @media (max-width:980px){ .hero-deco{display:none;} }
@@ -490,7 +501,11 @@
 <div class="nav-scrim" id="nav-scrim"></div>
 
 <section class="hero">
-  <img src="caduceus-logo.png" alt="" class="hero-deco">
+  <svg class="hero-deco" viewBox="0 0 200 200" fill="none">
+    <circle cx="100" cy="100" r="92" stroke="#1B4C7A" stroke-width="1"/>
+    <circle cx="100" cy="100" r="66" stroke="#1B4C7A" stroke-width="1"/>
+    <path class="hero-ecg-path" d="M20,100 L70,100 L80,80 L92,130 L104,60 L114,120 L124,100 L180,100" stroke="#E0793C" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
   <div class="wrap">
     <div class="hero-grid">
       <div>
