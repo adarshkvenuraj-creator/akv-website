@@ -764,7 +764,7 @@
     </div>
     <div class="contact-grid">
       <div class="contact-info">
-        <p>For appointment requests, referrals, or general questions, send a message directly — it opens in your email app, addressed to the clinic.</p>
+        <p>For appointment requests, referrals, or general questions, send a message directly using the form — it goes straight to the clinic.</p>
         <div class="contact-detail">
           <div class="label">Email</div>
           <a href="mailto:adarshkvenuraj@zohomail.in">adarshkvenuraj@zohomail.in</a>
@@ -797,8 +797,8 @@
           <label for="message">Message</label>
           <textarea id="message" required placeholder="Reason for visit or question..."></textarea>
         </div>
-        <button type="submit" class="form-submit">Send Message</button>
-        <div class="form-note">Opens your email app, addressed to adarshkvenuraj@zohomail.in</div>
+        <button type="submit" class="form-submit" id="contact-submit-btn">Send Message</button>
+        <div class="form-note" id="contact-form-note">Sent directly to adarshkvenuraj@zohomail.in</div>
       </form>
     </div>
   </div>
@@ -964,23 +964,42 @@
 
   document.getElementById('contact-form').addEventListener('submit', function(e){
     e.preventDefault();
+    var btn = document.getElementById('contact-submit-btn');
+    var note = document.getElementById('contact-form-note');
     var name = document.getElementById('name').value.trim();
     var phone = document.getElementById('phone').value.trim();
     var email = document.getElementById('email').value.trim();
     var message = document.getElementById('message').value.trim();
 
-    var subject = 'Consultation enquiry from ' + name;
-    var body =
-      'Name: ' + name + '\n' +
-      'Phone: ' + (phone || '—') + '\n' +
-      'Email: ' + email + '\n\n' +
-      message;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
 
-    var mailto = 'mailto:adarshkvenuraj@zohomail.in' +
-      '?subject=' + encodeURIComponent(subject) +
-      '&body=' + encodeURIComponent(body);
-
-    window.location.href = mailto;
+    fetch('https://formspree.io/f/mwvgvkpe', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: name,
+        phone: phone || '—',
+        email: email,
+        message: message,
+        subject: 'Consultation enquiry from ' + name
+      })
+    })
+    .then(function(res){
+      if(res.ok){
+        btn.disabled = false;
+        btn.textContent = 'Send Message';
+        note.textContent = 'Message sent. Dr. Venuraj’s clinic will get back to you soon.';
+        document.getElementById('contact-form').reset();
+      } else {
+        throw new Error('Form submission failed');
+      }
+    })
+    .catch(function(){
+      btn.disabled = false;
+      btn.textContent = 'Send Message';
+      note.textContent = 'Something went wrong. Please email adarshkvenuraj@zohomail.in directly or use WhatsApp above.';
+    });
   });
 </script>
 
