@@ -124,6 +124,19 @@
   @keyframes draw{ to{ stroke-dashoffset:0; } }
   .ecg-divider .ecg-path{ stroke:var(--ink); opacity:0.16; animation:none; stroke-dashoffset:0; }
 
+  .ecg-path-loop{
+    stroke-dasharray:60 1400;
+    stroke-dashoffset:0;
+    animation:ecg-pulse-loop 3.4s linear infinite;
+  }
+  @keyframes ecg-pulse-loop{
+    0%{ stroke-dashoffset:1460; }
+    100%{ stroke-dashoffset:-1460; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .ecg-path-loop{ animation:none; stroke-dasharray:none; }
+  }
+
   /* HERO */
   .hero{padding:168px 0 64px; position:relative; overflow:hidden;}
   .hero-deco{
@@ -543,7 +556,7 @@
   </div>
   <div class="ecg-wrap">
     <svg viewBox="0 0 1200 90" preserveAspectRatio="none">
-      <path class="ecg-path" d="M0,45 L260,45 L285,45 L300,15 L315,75 L332,45 L360,45 L385,20 L405,70 L425,45 L1200,45"/>
+      <path class="ecg-path ecg-path-loop" d="M0,45 L260,45 L285,45 L300,15 L315,75 L332,45 L360,45 L385,20 L405,70 L425,45 L1200,45"/>
     </svg>
   </div>
 </section>
