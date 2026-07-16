@@ -380,6 +380,10 @@
     font-family:'IBM Plex Mono', monospace; font-size:0.75rem; letter-spacing:0.08em;
     text-transform:uppercase; color:var(--pulse); margin-top:12px;
   }
+  .rep-actions{
+    display:flex; flex-direction:column; align-items:flex-start; gap:12px; flex-shrink:0;
+  }
+  .rep-actions .btn-ghost{ font-size:0.9rem; }
 
   /* CONTACT FORM */
   .contact-grid{display:grid; grid-template-columns:0.85fr 1.15fr; gap:64px; align-items:start;}
@@ -776,7 +780,10 @@
           Appointments are booked one per calendar month. Booking slots open on the 1st of every month, 10 AM onwards, Monday to Friday. Consultation is by prior appointment only.
         </div>
       </div>
-      <a href="https://dradarshkvenuraj.dayschedule.com/july2026" id="rep-link" class="btn-primary" target="_blank" rel="noopener">View Available Slots</a>
+      <div class="rep-actions">
+        <a href="https://dradarshkvenuraj.dayschedule.com/july2026" id="rep-link" class="btn-primary" target="_blank" rel="noopener">View Available Slots</a>
+        <a href="booking.html" class="btn-ghost">Book Directly on This Site →</a>
+      </div>
     </div>
   </div>
 </section>

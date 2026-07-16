@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book a Meeting — Dr. Adarsh K. Venuraj</title>
+<link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="icon" type="image/png" sizes="256x256" href="favicon_256.png">
+<meta name="description" content="Medical representatives can book an available meeting slot with Dr. Adarsh K. Venuraj here.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F2A4A;
+    --ink-soft:#4A5F73;
+    --paper:#F0F3F6;
+    --paper-raised:#FFFFFF;
+    --teal:#2C6FA8;
+    --teal-deep:#1B4C7A;
+    --pulse:#E0793C;
+    --line:rgba(15,42,74,0.14);
+    --shadow: 0 24px 48px -28px rgba(15,42,74,0.22);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif; line-height:1.6;
+    min-height:100vh; padding:48px 20px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .display{font-family:'Fraunces', serif;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  a{color:inherit;}
+  .wrap{ max-width:720px; margin:0 auto; }
+  .back-link{
+    display:inline-block; margin-bottom:24px; font-size:0.88rem;
+    color:var(--ink-soft); text-decoration:none;
+  }
+  .back-link:hover{ color:var(--teal-deep); }
+  header.page-head{ margin-bottom:32px; }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:0.75rem; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--teal-deep); margin-bottom:10px;
+  }
+  h1{ font-size:1.9rem; font-weight:500; margin-bottom:10px; }
+  .lede{ color:var(--ink-soft); font-size:1rem; max-width:56ch; }
+
+  .panel{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:8px;
+    box-shadow:var(--shadow); padding:32px;
+  }
+  .panel + .panel{ margin-top:20px; }
+
+  h2{ font-size:1.15rem; font-weight:500; margin-bottom:6px; }
+  .section-sub{ color:var(--ink-soft); font-size:0.9rem; margin-bottom:20px; }
+
+  .slot-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:12px; }
+  .slot-btn{
+    border:1px solid var(--line); background:var(--paper-raised); border-radius:6px;
+    padding:14px 12px; text-align:left; cursor:pointer; transition:border-color 0.15s, background 0.15s;
+    font-family:'IBM Plex Sans', sans-serif;
+  }
+  .slot-btn:hover{ border-color:var(--teal-deep); background:rgba(44,111,168,0.05); }
+  .slot-btn.selected{ border-color:var(--teal-deep); background:rgba(44,111,168,0.1); box-shadow:0 0 0 1px var(--teal-deep) inset; }
+  .slot-btn .slot-date{ font-weight:600; font-size:0.92rem; }
+  .slot-btn .slot-time{ font-family:'IBM Plex Mono', monospace; font-size:0.85rem; color:var(--teal-deep); margin-top:4px; }
+
+  .empty-note{ color:var(--ink-soft); font-size:0.95rem; padding:12px 0; }
+
+  .field{ margin-bottom:18px; }
+  label{
+    display:block; font-family:'IBM Plex Mono', monospace; font-size:0.72rem;
+    letter-spacing:0.08em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:7px;
+  }
+  input{
+    width:100%; background:var(--paper-raised); border:1px solid var(--line);
+    border-radius:3px; padding:12px 14px; font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.98rem; color:var(--ink); transition:border-color 0.2s;
+  }
+  input:focus{ outline:none; border-color:var(--teal-deep); }
+  .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:560px){ .form-row{ grid-template-columns:1fr; } }
+
+  .selected-summary{
+    background:rgba(44,111,168,0.06); border-left:2px solid var(--teal-deep);
+    border-radius:3px; padding:12px 14px; margin-bottom:20px; font-size:0.9rem;
+  }
+  .selected-summary strong{ display:block; color:var(--ink); margin-bottom:2px; }
+
+  button.submit-btn{
+    width:100%; background:var(--teal-deep); color:#fff; border:none;
+    padding:14px 20px; border-radius:4px; font-size:0.98rem;
+    font-family:'IBM Plex Sans', sans-serif; letter-spacing:0.01em;
+    cursor:pointer; transition:background 0.2s;
+  }
+  button.submit-btn:hover{ background:var(--pulse); }
+  button.submit-btn:disabled{ opacity:0.6; cursor:not-allowed; }
+
+  .msg{ margin-top:16px; font-size:0.9rem; padding:12px 14px; border-radius:3px; display:none; }
+  .msg.show{ display:block; }
+  .msg.error{ background:rgba(224,121,60,0.1); color:#a8501f; border-left:2px solid var(--pulse); }
+  .msg.success{ background:rgba(31,111,107,0.08); color:var(--teal-deep); border-left:2px solid var(--teal-deep); }
+
+  .hidden{ display:none; }
+
+  .confirm-box{ text-align:center; padding:24px 12px; }
+  .confirm-box .check{
+    width:56px; height:56px; border-radius:50%; background:rgba(31,111,107,0.12);
+    display:flex; align-items:center; justify-content:center; margin:0 auto 18px;
+  }
+  .confirm-box h2{ margin-bottom:8px; }
+  .confirm-box .confirm-detail{ color:var(--ink-soft); font-size:0.95rem; }
+  .confirm-box .confirm-detail strong{ color:var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <a href="index.html#reps" class="back-link">← Back to site</a>
+
+  <header class="page-head">
+    <div class="eyebrow">Medical Representative Appointments</div>
+    <h1 class="display">Book a meeting with Dr. Venuraj</h1>
+    <p class="lede">Pick any open slot below. Meetings are booked one representative per slot — once you confirm, the slot is reserved for you.</p>
+  </header>
+
+  <div class="panel" id="booking-panel">
+    <h2>Available slots</h2>
+    <p class="section-sub" id="slots-status">Loading available slots…</p>
+    <div class="slot-grid" id="slot-grid"></div>
+  </div>
+
+  <div class="panel hidden" id="details-panel">
+    <h2>Your details</h2>
+    <p class="section-sub">We'll confirm your slot instantly.</p>
+
+    <div class="selected-summary" id="selected-summary"></div>
+
+    <form id="booking-form">
+      <div class="form-row">
+        <div class="field">
+          <label for="rep-name">Full Name</label>
+          <input type="text" id="rep-name" required>
+        </div>
+        <div class="field">
+          <label for="rep-company">Company</label>
+          <input type="text" id="rep-company">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="rep-phone">Phone</label>
+          <input type="tel" id="rep-phone" required>
+        </div>
+        <div class="field">
+          <label for="rep-email">Email</label>
+          <input type="email" id="rep-email">
+        </div>
+      </div>
+      <button type="submit" class="submit-btn" id="confirm-btn">Confirm Booking</button>
+    </form>
+    <div class="msg" id="booking-msg"></div>
+  </div>
+
+  <div class="panel hidden" id="confirmed-panel">
+    <div class="confirm-box">
+      <div class="check">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1B4C7A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+      </div>
+      <h2 class="display">You're booked</h2>
+      <p class="confirm-detail" id="confirm-detail"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+  var SUPABASE_URL = "https://ikrvqhuwhwahnyiozxci.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrcnZxaHV3aHdhaG55aW96eGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzQyMjQsImV4cCI6MjA5OTYxMDIyNH0.uFJwXhHOxsaSwF2VtPXMHTSnJRcTKgpeas30oqTyqKg";
+  var FORMSPREE_URL = "https://formspree.io/f/mwvgvkpe";
+
+  var slotGrid = document.getElementById('slot-grid');
+  var slotsStatus = document.getElementById('slots-status');
+  var bookingPanel = document.getElementById('booking-panel');
+  var detailsPanel = document.getElementById('details-panel');
+  var confirmedPanel = document.getElementById('confirmed-panel');
+  var selectedSummary = document.getElementById('selected-summary');
+  var bookingMsg = document.getElementById('booking-msg');
+
+  var selectedSlot = null; // { id, slot_date, slot_time }
+
+  function sbHeaders(extra){
+    var h = { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY };
+    if(extra) for(var k in extra) h[k] = extra[k];
+    return h;
+  }
+
+  function formatSlotDate(dateStr){
+    var d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  function formatSlotTime(timeStr){
+    var d = new Date('2000-01-01T' + timeStr);
+    return d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+
+  function showMsg(el, text, type){
+    el.textContent = text;
+    el.className = 'msg show ' + type;
+  }
+
+  async function loadOpenSlots(){
+    try {
+      var todayStr = new Date().toISOString().slice(0,10);
+
+      var slotsRes = await fetch(
+        SUPABASE_URL + '/rest/v1/rep_slots?select=*&slot_date=gte.' + todayStr + '&order=slot_date.asc,slot_time.asc',
+        { headers: sbHeaders() }
+      );
+      var slots = slotsRes.ok ? await slotsRes.json() : [];
+
+      var bookingsRes = await fetch(
+        SUPABASE_URL + '/rest/v1/rep_bookings?select=slot_id',
+        { headers: sbHeaders() }
+      );
+      var bookings = bookingsRes.ok ? await bookingsRes.json() : [];
+      var bookedIds = {};
+      bookings.forEach(function(b){ bookedIds[b.slot_id] = true; });
+
+      var openSlots = slots.filter(function(s){ return !bookedIds[s.id]; });
+
+      if(!openSlots.length){
+        slotsStatus.textContent = 'No open slots right now — please check back soon or contact the clinic directly.';
+        slotGrid.innerHTML = '';
+        return;
+      }
+
+      slotsStatus.textContent = 'Select a slot to continue.';
+      slotGrid.innerHTML = openSlots.map(function(s){
+        return '<button type="button" class="slot-btn" data-id="' + s.id + '" data-date="' + s.slot_date + '" data-time="' + s.slot_time + '">' +
+          '<div class="slot-date">' + formatSlotDate(s.slot_date) + '</div>' +
+          '<div class="slot-time mono">' + formatSlotTime(s.slot_time) + '</div>' +
+        '</button>';
+      }).join('');
+
+      slotGrid.querySelectorAll('.slot-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          slotGrid.querySelectorAll('.slot-btn').forEach(function(b){ b.classList.remove('selected'); });
+          btn.classList.add('selected');
+          selectedSlot = {
+            id: btn.getAttribute('data-id'),
+            slot_date: btn.getAttribute('data-date'),
+            slot_time: btn.getAttribute('data-time')
+          };
+          selectedSummary.innerHTML = '<strong>Selected slot</strong>' +
+            formatSlotDate(selectedSlot.slot_date) + ' at ' + formatSlotTime(selectedSlot.slot_time);
+          detailsPanel.classList.remove('hidden');
+          detailsPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      });
+    } catch(err){
+      slotsStatus.textContent = 'Could not load slots. Please refresh the page or try again shortly.';
+    }
+  }
+
+  document.getElementById('booking-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    if(!selectedSlot){
+      showMsg(bookingMsg, 'Please select a slot first.', 'error');
+      return;
+    }
+
+    var btn = document.getElementById('confirm-btn');
+    btn.disabled = true; btn.textContent = 'Booking…';
+
+    var repName = document.getElementById('rep-name').value.trim();
+    var company = document.getElementById('rep-company').value.trim();
+    var phone = document.getElementById('rep-phone').value.trim();
+    var email = document.getElementById('rep-email').value.trim();
+
+    try {
+      var res = await fetch(SUPABASE_URL + '/rest/v1/rep_bookings', {
+        method: 'POST',
+        headers: sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=representation' }),
+        body: JSON.stringify({
+          slot_id: selectedSlot.id,
+          rep_name: repName,
+          company: company || null,
+          phone: phone || null,
+          email: email || null
+        })
+      });
+
+      if(!res.ok){
+        var errBody = await res.json().catch(function(){ return {}; });
+        // 23505 = unique_violation -> someone else already booked this slot
+        if(errBody && errBody.code === '23505'){
+          showMsg(bookingMsg, 'Sorry — that slot was just booked by someone else. Please pick another.', 'error');
+          btn.disabled = false; btn.textContent = 'Confirm Booking';
+          selectedSlot = null;
+          detailsPanel.classList.add('hidden');
+          loadOpenSlots();
+          return;
+        }
+        throw new Error(errBody.message || 'Booking failed');
+      }
+
+      // Notify Dr. Venuraj by email via Formspree (best-effort, doesn't block confirmation)
+      fetch(FORMSPREE_URL, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: 'New medical rep booking: ' + repName,
+          name: repName,
+          company: company || '—',
+          phone: phone || '—',
+          email: email || '—',
+          message: 'Booked slot: ' + formatSlotDate(selectedSlot.slot_date) + ' at ' + formatSlotTime(selectedSlot.slot_time)
+        })
+      }).catch(function(){ /* best-effort only */ });
+
+      // Show confirmation
+      document.getElementById('confirm-detail').innerHTML =
+        repName + ', your meeting is confirmed for <strong>' + formatSlotDate(selectedSlot.slot_date) +
+        ' at ' + formatSlotTime(selectedSlot.slot_time) + '</strong>. ' +
+        'If you need to reschedule or cancel, please contact the clinic directly.';
+
+      bookingPanel.classList.add('hidden');
+      detailsPanel.classList.add('hidden');
+      confirmedPanel.classList.remove('hidden');
+      confirmedPanel.scrollIntoView({ behavior: 'smooth' });
+
+    } catch(err){
+      btn.disabled = false; btn.textContent = 'Confirm Booking';
+      showMsg(bookingMsg, 'Something went wrong: ' + (err && err.message ? err.message : 'please try again.'), 'error');
+    }
+  });
+
+  loadOpenSlots();
+</script>
+
+</body>
+</html>

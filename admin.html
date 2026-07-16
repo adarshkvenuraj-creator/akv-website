@@ -32,6 +32,7 @@
     border:1px solid var(--line); border-radius:6px; box-shadow:var(--shadow);
     padding:40px 36px;
   }
+  .panel.wide{ max-width:640px; }
   h1{
     font-family:'Fraunces', serif; font-weight:500; font-size:1.5rem;
     margin-bottom:6px;
@@ -82,11 +83,38 @@
     display:inline-block; margin-top:10px; font-size:0.8rem;
     color:var(--pulse); cursor:pointer; text-decoration:underline;
   }
+  h2{
+    font-family:'Fraunces', serif; font-weight:500; font-size:1.15rem;
+    margin-bottom:6px;
+  }
+  .add-slot-row{ display:flex; gap:10px; align-items:flex-end; margin-bottom:10px; }
+  .add-slot-row .field{ margin-bottom:0; flex:1; }
+  .add-slot-row button{ width:auto; padding:12px 18px; white-space:nowrap; margin-top:0; }
+  .slot-list{ margin-top:20px; }
+  .slot-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 14px; border:1px solid var(--line); border-radius:3px;
+    margin-bottom:8px; font-size:0.9rem;
+  }
+  .slot-item.booked{ background:rgba(178,58,72,0.05); }
+  .slot-item .slot-when{ font-family:'IBM Plex Mono', monospace; font-size:0.85rem; }
+  .slot-item .slot-rep{ color:var(--ink-soft); font-size:0.82rem; margin-top:3px; }
+  .slot-item .remove-slot{
+    color:var(--pulse); cursor:pointer; text-decoration:underline; font-size:0.82rem;
+    white-space:nowrap; margin-left:12px;
+  }
+  .badge{
+    display:inline-block; font-family:'IBM Plex Mono', monospace; font-size:0.68rem;
+    letter-spacing:0.04em; text-transform:uppercase; padding:3px 8px; border-radius:3px;
+  }
+  .badge.open{ background:rgba(31,111,107,0.1); color:var(--teal-deep); }
+  .badge.booked{ background:rgba(178,58,72,0.1); color:var(--pulse); }
+  .empty-note{ color:var(--ink-soft); font-size:0.85rem; padding:8px 0; }
 </style>
 </head>
 <body>
 
-<div class="panel">
+<div class="panel" id="main-panel">
   <!-- LOGIN VIEW -->
   <div id="login-view">
     <h1>Admin Login</h1>
@@ -130,6 +158,28 @@
     </form>
     <div class="msg" id="edit-msg"></div>
     <span class="cancel-pending hidden" id="cancel-pending-btn">Cancel scheduled link</span>
+
+    <div class="divider"></div>
+
+    <h2>Meeting Slots</h2>
+    <p class="sub">Add specific dates/times reps can book. Slots appear on your public booking page the moment you add them.</p>
+
+    <div class="add-slot-row">
+      <div class="field">
+        <label for="slot-date">Date</label>
+        <input type="date" id="slot-date" required>
+      </div>
+      <div class="field">
+        <label for="slot-time">Time</label>
+        <input type="time" id="slot-time" required>
+      </div>
+      <button type="button" id="add-slot-btn">Add Slot</button>
+    </div>
+    <div class="msg" id="slot-msg"></div>
+
+    <div class="slot-list" id="slot-list"></div>
+
+    <div class="divider"></div>
     <span class="logout" id="logout-btn">Sign out</span>
   </div>
 </div>
@@ -220,13 +270,17 @@
 
   async function checkSession(){
     var { data } = await sb.auth.getSession();
+    var mainPanel = document.getElementById('main-panel');
     if(data.session){
       loginView.classList.add('hidden');
       editView.classList.remove('hidden');
+      mainPanel.classList.add('wide');
       loadCurrentLink();
+      loadSlots();
     } else {
       loginView.classList.remove('hidden');
       editView.classList.add('hidden');
+      mainPanel.classList.remove('wide');
     }
   }
 
@@ -309,6 +363,107 @@
   document.getElementById('logout-btn').addEventListener('click', async function(){
     await sb.auth.signOut();
     checkSession();
+  });
+
+  /* ===================== MEETING SLOTS ===================== */
+
+  function formatSlotWhen(dateStr, timeStr){
+    // dateStr "2026-08-05", timeStr "10:30:00"
+    var d = new Date(dateStr + 'T' + timeStr);
+    var dateLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    var timeLabel = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return dateLabel + ' — ' + timeLabel;
+  }
+
+  async function loadSlots(){
+    var listEl = document.getElementById('slot-list');
+    var slotMsg = document.getElementById('slot-msg');
+
+    var { data: slots, error: slotsErr } = await sb
+      .from('rep_slots')
+      .select('*')
+      .order('slot_date', { ascending: true })
+      .order('slot_time', { ascending: true });
+
+    if(slotsErr){
+      showMsg(slotMsg, 'Could not load slots: ' + slotsErr.message, 'error');
+      return;
+    }
+
+    var { data: bookings, error: bookingsErr } = await sb
+      .from('rep_bookings')
+      .select('*');
+
+    if(bookingsErr){
+      showMsg(slotMsg, 'Could not load bookings: ' + bookingsErr.message, 'error');
+      return;
+    }
+
+    var bookingBySlot = {};
+    (bookings || []).forEach(function(b){ bookingBySlot[b.slot_id] = b; });
+
+    if(!slots || !slots.length){
+      listEl.innerHTML = '<div class="empty-note">No slots added yet. Add one above.</div>';
+      return;
+    }
+
+    listEl.innerHTML = slots.map(function(slot){
+      var booking = bookingBySlot[slot.id];
+      var isBooked = !!booking;
+      var whenLabel = formatSlotWhen(slot.slot_date, slot.slot_time);
+      var repInfo = isBooked
+        ? '<div class="slot-rep">' + booking.rep_name + (booking.company ? ' — ' + booking.company : '') +
+          (booking.phone ? ' · ' + booking.phone : '') + (booking.email ? ' · ' + booking.email : '') + '</div>'
+        : '';
+      return (
+        '<div class="slot-item ' + (isBooked ? 'booked' : '') + '" data-slot-id="' + slot.id + '">' +
+          '<div>' +
+            '<span class="badge ' + (isBooked ? 'booked' : 'open') + '">' + (isBooked ? 'Booked' : 'Open') + '</span> ' +
+            '<span class="slot-when">' + whenLabel + '</span>' +
+            repInfo +
+          '</div>' +
+          '<span class="remove-slot" data-slot-id="' + slot.id + '">Remove</span>' +
+        '</div>'
+      );
+    }).join('');
+
+    listEl.querySelectorAll('.remove-slot').forEach(function(el){
+      el.addEventListener('click', async function(){
+        var slotId = el.getAttribute('data-slot-id');
+        if(!confirm('Remove this slot? If a rep has booked it, their booking will also be removed.')) return;
+        var { error } = await sb.from('rep_slots').delete().eq('id', slotId);
+        if(error){
+          showMsg(slotMsg, 'Could not remove slot: ' + error.message, 'error');
+          return;
+        }
+        loadSlots();
+      });
+    });
+  }
+
+  document.getElementById('add-slot-btn').addEventListener('click', async function(){
+    var slotMsg = document.getElementById('slot-msg');
+    var dateVal = document.getElementById('slot-date').value;
+    var timeVal = document.getElementById('slot-time').value;
+
+    if(!dateVal || !timeVal){
+      showMsg(slotMsg, 'Pick both a date and a time.', 'error');
+      return;
+    }
+
+    var { error } = await sb.from('rep_slots').insert({ slot_date: dateVal, slot_time: timeVal });
+
+    if(error){
+      if(error.code === '23505'){
+        showMsg(slotMsg, 'That exact date and time is already added.', 'error');
+      } else {
+        showMsg(slotMsg, 'Could not add slot: ' + error.message, 'error');
+      }
+      return;
+    }
+    showMsg(slotMsg, 'Slot added.', 'success');
+    document.getElementById('slot-time').value = '';
+    loadSlots();
   });
 
   checkSession();
