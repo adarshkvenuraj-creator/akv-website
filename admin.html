@@ -71,6 +71,17 @@
     color:var(--ink-soft); cursor:pointer; text-decoration:underline;
   }
   .hidden{display:none;}
+  .pending-box{
+    font-size:0.85rem; color:var(--ink-soft); margin-bottom:20px; word-break:break-all;
+    background:rgba(178,58,72,0.06); border-left:2px solid var(--pulse);
+    padding:12px 14px; border-radius:3px;
+  }
+  .pending-box strong{color:var(--ink); display:block; margin-bottom:4px; font-weight:600;}
+  .hint{font-size:0.78rem; color:var(--ink-soft); margin-top:6px;}
+  .cancel-pending{
+    display:inline-block; margin-top:10px; font-size:0.8rem;
+    color:var(--pulse); cursor:pointer; text-decoration:underline;
+  }
 </style>
 </head>
 <body>
@@ -97,8 +108,9 @@
   <!-- EDIT VIEW -->
   <div id="edit-view" class="hidden">
     <h1>Rep Booking Link</h1>
-    <p class="sub">Update the monthly link and label shown on the website.</p>
+    <p class="sub">Schedule next month's link and label — it will only go live on the website automatically at the date/time you set below.</p>
     <div class="current" id="current-box"></div>
+    <div class="pending-box hidden" id="pending-box"></div>
     <div class="divider"></div>
     <form id="edit-form">
       <div class="field">
@@ -109,9 +121,15 @@
         <label for="label">Display Label</label>
         <input type="text" id="label" required placeholder="Open for August 2026">
       </div>
-      <button type="submit" id="save-btn">Save Changes</button>
+      <div class="field">
+        <label for="golive">Go live at (IST)</label>
+        <input type="datetime-local" id="golive" required>
+        <div class="hint">Defaults to the 1st of next month, 10:00 AM IST. The link stays hidden until this exact moment.</div>
+      </div>
+      <button type="submit" id="save-btn">Schedule This Link</button>
     </form>
     <div class="msg" id="edit-msg"></div>
+    <span class="cancel-pending hidden" id="cancel-pending-btn">Cancel scheduled link</span>
     <span class="logout" id="logout-btn">Sign out</span>
   </div>
 </div>
@@ -133,16 +151,71 @@
     el.className = 'msg show ' + type;
   }
 
+  // Returns "1st of next month, 10:00 AM IST" formatted for a datetime-local input
+  function defaultGoLiveLocalValue(){
+    var now = new Date();
+    // Compute in IST (UTC+5:30) regardless of the admin's own timezone
+    var istNowMs = now.getTime() + (now.getTimezoneOffset() * 60000) + (5.5 * 3600000);
+    var istNow = new Date(istNowMs);
+    var year = istNow.getFullYear();
+    var month = istNow.getMonth() + 1; // next month
+    if(month > 11){ month = 0; year += 1; } else { /* keep zero-indexed handling below */ }
+    // Build next month index (0-based) directly
+    var nextMonthIndex = istNow.getMonth() + 1;
+    var nextYear = istNow.getFullYear();
+    if(nextMonthIndex > 11){ nextMonthIndex = 0; nextYear += 1; }
+    var mm = String(nextMonthIndex + 1).padStart(2, '0');
+    var dd = '01';
+    return nextYear + '-' + mm + '-' + dd + 'T10:00';
+  }
+
+  // Converts a "datetime-local" value (interpreted as IST) into a proper UTC ISO string
+  function istLocalToUtcIso(localValue){
+    // localValue looks like "2026-08-01T10:00"
+    var isoWithOffset = localValue + ':00+05:30';
+    return new Date(isoWithOffset).toISOString();
+  }
+
+  function formatIst(isoString){
+    if(!isoString) return '';
+    var d = new Date(isoString);
+    return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' }) + ' IST';
+  }
+
   async function loadCurrentLink(){
     var { data, error } = await sb.from('booking_link').select('*').eq('id', 1).single();
     if(error){
       showMsg(editMsg, 'Could not load current link: ' + error.message, 'error');
       return;
     }
-    document.getElementById('url').value = data.url;
-    document.getElementById('label').value = data.label;
     document.getElementById('current-box').innerHTML =
       '<strong>Currently live</strong>' + data.label + ' → ' + data.url;
+
+    var pendingBox = document.getElementById('pending-box');
+    var cancelBtn = document.getElementById('cancel-pending-btn');
+
+    if(data.pending_url && data.pending_label && data.go_live_at){
+      pendingBox.classList.remove('hidden');
+      cancelBtn.classList.remove('hidden');
+      pendingBox.innerHTML =
+        '<strong>Scheduled — goes live ' + formatIst(data.go_live_at) + '</strong>' +
+        data.pending_label + ' → ' + data.pending_url;
+      // Pre-fill form with the pending values so it's easy to tweak
+      document.getElementById('url').value = data.pending_url;
+      document.getElementById('label').value = data.pending_label;
+      var d = new Date(data.go_live_at);
+      var istMs = d.getTime() + (d.getTimezoneOffset() * 60000) + (5.5 * 3600000);
+      var ist = new Date(istMs);
+      var localVal = ist.getFullYear() + '-' + String(ist.getMonth()+1).padStart(2,'0') + '-' + String(ist.getDate()).padStart(2,'0') +
+        'T' + String(ist.getHours()).padStart(2,'0') + ':' + String(ist.getMinutes()).padStart(2,'0');
+      document.getElementById('golive').value = localVal;
+    } else {
+      pendingBox.classList.add('hidden');
+      cancelBtn.classList.add('hidden');
+      document.getElementById('url').value = '';
+      document.getElementById('label').value = '';
+      document.getElementById('golive').value = defaultGoLiveLocalValue();
+    }
   }
 
   async function checkSession(){
@@ -193,21 +266,43 @@
   document.getElementById('edit-form').addEventListener('submit', async function(e){
     e.preventDefault();
     var btn = document.getElementById('save-btn');
-    btn.disabled = true; btn.textContent = 'Saving…';
+    btn.disabled = true; btn.textContent = 'Scheduling…';
     var url = document.getElementById('url').value.trim();
     var label = document.getElementById('label').value.trim();
+    var goLiveLocal = document.getElementById('golive').value;
+
+    var goLiveUtcIso;
+    try {
+      goLiveUtcIso = istLocalToUtcIso(goLiveLocal);
+    } catch(err){
+      btn.disabled = false; btn.textContent = 'Schedule This Link';
+      showMsg(editMsg, 'Invalid date/time.', 'error');
+      return;
+    }
 
     var { error } = await sb.from('booking_link')
-      .update({ url: url, label: label, updated_at: new Date().toISOString() })
+      .update({ pending_url: url, pending_label: label, go_live_at: goLiveUtcIso })
       .eq('id', 1);
 
-    btn.disabled = false; btn.textContent = 'Save Changes';
+    btn.disabled = false; btn.textContent = 'Schedule This Link';
 
     if(error){
       showMsg(editMsg, 'Save failed: ' + error.message, 'error');
       return;
     }
-    showMsg(editMsg, 'Saved. The website will show this link immediately.', 'success');
+    showMsg(editMsg, 'Scheduled. The website will automatically switch to this link at ' + formatIst(goLiveUtcIso) + ' — no further action needed.', 'success');
+    loadCurrentLink();
+  });
+
+  document.getElementById('cancel-pending-btn').addEventListener('click', async function(){
+    var { error } = await sb.from('booking_link')
+      .update({ pending_url: null, pending_label: null, go_live_at: null })
+      .eq('id', 1);
+    if(error){
+      showMsg(editMsg, 'Could not cancel: ' + error.message, 'error');
+      return;
+    }
+    showMsg(editMsg, 'Scheduled link cancelled.', 'success');
     loadCurrentLink();
   });
 

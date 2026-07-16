@@ -953,7 +953,7 @@
     var SUPABASE_URL = "https://ikrvqhuwhwahnyiozxci.supabase.co";
     var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlrcnZxaHV3aHdhaG55aW96eGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwMzQyMjQsImV4cCI6MjA5OTYxMDIyNH0.uFJwXhHOxsaSwF2VtPXMHTSnJRcTKgpeas30oqTyqKg";
 
-    fetch(SUPABASE_URL + '/rest/v1/booking_link?id=eq.1&select=url,label', {
+    fetch(SUPABASE_URL + '/rest/v1/booking_link?id=eq.1&select=url,label,pending_url,pending_label,go_live_at', {
       headers: {
         'apikey': SUPABASE_ANON_KEY,
         'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
@@ -961,9 +961,24 @@
     })
     .then(function(res){ return res.ok ? res.json() : null; })
     .then(function(rows){
-      if(rows && rows.length && rows[0].url && rows[0].label){
-        document.getElementById('rep-link').href = rows[0].url;
-        document.getElementById('rep-period').textContent = rows[0].label;
+      if(!rows || !rows.length) return;
+      var row = rows[0];
+
+      // If a scheduled link exists and its go-live time has already passed,
+      // show the scheduled link instead of the currently "live" one.
+      var useUrl = row.url;
+      var useLabel = row.label;
+      if(row.pending_url && row.pending_label && row.go_live_at){
+        var goLiveTime = new Date(row.go_live_at).getTime();
+        if(Date.now() >= goLiveTime){
+          useUrl = row.pending_url;
+          useLabel = row.pending_label;
+        }
+      }
+
+      if(useUrl && useLabel){
+        document.getElementById('rep-link').href = useUrl;
+        document.getElementById('rep-period').textContent = useLabel;
       }
     })
     .catch(function(){ /* silently keep the hardcoded fallback already set above */ });
