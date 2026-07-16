@@ -110,6 +110,38 @@
   .badge.open{ background:rgba(31,111,107,0.1); color:var(--teal-deep); }
   .badge.booked{ background:rgba(178,58,72,0.1); color:var(--pulse); }
   .empty-note{ color:var(--ink-soft); font-size:0.85rem; padding:8px 0; }
+
+  .weekday-picker{ display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .weekday-chip{
+    border:1px solid var(--line); border-radius:20px; padding:8px 14px;
+    font-size:0.85rem; cursor:pointer; user-select:none; background:var(--paper-raised);
+    transition:background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .weekday-chip.selected{ background:var(--teal-deep); border-color:var(--teal-deep); color:#fff; }
+  .rule-row{ display:flex; gap:10px; }
+  .rule-row .field{ flex:1; }
+  .generate-btn{ margin-top:4px; }
+  .rule-summary{
+    font-size:0.85rem; color:var(--ink-soft); margin-bottom:14px;
+    background:rgba(20,75,72,0.05); border-radius:3px; padding:10px 12px;
+  }
+
+  .block-row{ display:flex; gap:10px; align-items:flex-end; margin-bottom:10px; }
+  .block-row .field{ margin-bottom:0; flex:1; }
+  .block-row button{ width:auto; padding:12px 18px; white-space:nowrap; margin-top:0; }
+  .blocked-list{ margin-top:14px; }
+  .blocked-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 14px; border:1px solid var(--line); border-radius:3px;
+    margin-bottom:8px; font-size:0.88rem; background:rgba(178,58,72,0.04);
+  }
+  .blocked-item .unblock{
+    color:var(--pulse); cursor:pointer; text-decoration:underline; font-size:0.82rem;
+    white-space:nowrap; margin-left:12px;
+  }
+  .month-nav{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  .month-nav .month-label{ font-family:'IBM Plex Mono', monospace; font-size:0.85rem; color:var(--ink-soft); }
+  .month-nav button{ width:auto; padding:6px 12px; margin-top:0; font-size:0.85rem; }
 </style>
 </head>
 <body>
@@ -161,8 +193,69 @@
 
     <div class="divider"></div>
 
-    <h2>Meeting Slots</h2>
-    <p class="sub">Add specific dates/times reps can book. Slots appear on your public booking page the moment you add them.</p>
+    <h2>Recurring Availability</h2>
+    <p class="sub">Set the days and time window reps can book. Slots are generated automatically for the selected calendar month, in steps of the duration you choose.</p>
+
+    <div class="weekday-picker" id="weekday-picker">
+      <div class="weekday-chip" data-day="1">Mon</div>
+      <div class="weekday-chip" data-day="2">Tue</div>
+      <div class="weekday-chip" data-day="3">Wed</div>
+      <div class="weekday-chip" data-day="4">Thu</div>
+      <div class="weekday-chip" data-day="5">Fri</div>
+      <div class="weekday-chip" data-day="6">Sat</div>
+      <div class="weekday-chip" data-day="7">Sun</div>
+    </div>
+
+    <div class="rule-row">
+      <div class="field">
+        <label for="rule-start">Start Time</label>
+        <input type="time" id="rule-start" required>
+      </div>
+      <div class="field">
+        <label for="rule-end">End Time</label>
+        <input type="time" id="rule-end" required>
+      </div>
+      <div class="field">
+        <label for="rule-duration">Slot Length (min)</label>
+        <input type="number" id="rule-duration" min="1" max="120" required>
+      </div>
+    </div>
+    <button type="button" id="save-rule-btn">Save Rule</button>
+    <div class="msg" id="rule-msg"></div>
+
+    <div class="divider"></div>
+
+    <div class="month-nav">
+      <button type="button" id="prev-month-btn">← Prev</button>
+      <span class="month-label" id="month-label"></span>
+      <button type="button" id="next-month-btn">Next →</button>
+    </div>
+    <button type="button" id="generate-btn" class="generate-btn">Generate Slots For This Month</button>
+    <div class="msg" id="generate-msg"></div>
+
+    <div class="divider"></div>
+
+    <h2>Blocked Dates</h2>
+    <p class="sub">Block specific dates (holidays, leave, etc.) so no slots are bookable on them, without changing your recurring rule.</p>
+
+    <div class="block-row">
+      <div class="field">
+        <label for="block-date">Date</label>
+        <input type="date" id="block-date" required>
+      </div>
+      <div class="field">
+        <label for="block-reason">Reason (optional)</label>
+        <input type="text" id="block-reason" placeholder="e.g. On leave">
+      </div>
+      <button type="button" id="add-block-btn">Block Date</button>
+    </div>
+    <div class="msg" id="block-msg"></div>
+    <div class="blocked-list" id="blocked-list"></div>
+
+    <div class="divider"></div>
+
+    <h2>All Slots</h2>
+    <p class="sub">Generated and manually added slots for the selected month. Remove any you don't want bookable.</p>
 
     <div class="add-slot-row">
       <div class="field">
@@ -276,6 +369,9 @@
       editView.classList.remove('hidden');
       mainPanel.classList.add('wide');
       loadCurrentLink();
+      loadRule();
+      loadBlockedDates();
+      renderMonthLabel();
       loadSlots();
     } else {
       loginView.classList.remove('hidden');
@@ -365,7 +461,265 @@
     checkSession();
   });
 
-  /* ===================== MEETING SLOTS ===================== */
+  /* ===================== RECURRING RULE ===================== */
+
+  var selectedWeekdays = [1,2,3,4,5]; // Mon-Fri default
+
+  document.querySelectorAll('.weekday-chip').forEach(function(chip){
+    var day = parseInt(chip.getAttribute('data-day'), 10);
+    if(selectedWeekdays.indexOf(day) !== -1) chip.classList.add('selected');
+    chip.addEventListener('click', function(){
+      var idx = selectedWeekdays.indexOf(day);
+      if(idx === -1){
+        selectedWeekdays.push(day);
+        chip.classList.add('selected');
+      } else {
+        selectedWeekdays.splice(idx, 1);
+        chip.classList.remove('selected');
+      }
+    });
+  });
+
+  async function loadRule(){
+    var { data, error } = await sb.from('rep_slot_rules').select('*').order('created_at', { ascending: false }).limit(1);
+    if(error || !data || !data.length){
+      // No rule yet — leave defaults (Mon-Fri, blank times)
+      document.getElementById('rule-duration').value = 5;
+      return;
+    }
+    var rule = data[0];
+    selectedWeekdays = rule.weekdays.slice();
+    document.querySelectorAll('.weekday-chip').forEach(function(chip){
+      var day = parseInt(chip.getAttribute('data-day'), 10);
+      chip.classList.toggle('selected', selectedWeekdays.indexOf(day) !== -1);
+    });
+    document.getElementById('rule-start').value = rule.start_time.slice(0,5);
+    document.getElementById('rule-end').value = rule.end_time.slice(0,5);
+    document.getElementById('rule-duration').value = rule.slot_minutes;
+  }
+
+  document.getElementById('save-rule-btn').addEventListener('click', async function(){
+    var ruleMsg = document.getElementById('rule-msg');
+    var startVal = document.getElementById('rule-start').value;
+    var endVal = document.getElementById('rule-end').value;
+    var durationVal = parseInt(document.getElementById('rule-duration').value, 10);
+
+    if(!selectedWeekdays.length){
+      showMsg(ruleMsg, 'Select at least one weekday.', 'error');
+      return;
+    }
+    if(!startVal || !endVal){
+      showMsg(ruleMsg, 'Set both a start and end time.', 'error');
+      return;
+    }
+    if(!durationVal || durationVal < 1){
+      showMsg(ruleMsg, 'Slot length must be at least 1 minute.', 'error');
+      return;
+    }
+    if(startVal >= endVal){
+      showMsg(ruleMsg, 'End time must be after start time.', 'error');
+      return;
+    }
+
+    // Remove any existing rule(s) and insert the new one (single active rule model)
+    await sb.from('rep_slot_rules').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    var { error } = await sb.from('rep_slot_rules').insert({
+      weekdays: selectedWeekdays.slice().sort(),
+      start_time: startVal + ':00',
+      end_time: endVal + ':00',
+      slot_minutes: durationVal
+    });
+
+    if(error){
+      showMsg(ruleMsg, 'Could not save rule: ' + error.message, 'error');
+      return;
+    }
+    showMsg(ruleMsg, 'Rule saved. Click "Generate Slots For This Month" to create slots from it.', 'success');
+  });
+
+  /* ===================== MONTH NAVIGATION ===================== */
+
+  var viewMonth = new Date().getMonth(); // 0-indexed
+  var viewYear = new Date().getFullYear();
+
+  function renderMonthLabel(){
+    var label = new Date(viewYear, viewMonth, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+    document.getElementById('month-label').textContent = label;
+  }
+
+  document.getElementById('prev-month-btn').addEventListener('click', function(){
+    viewMonth -= 1;
+    if(viewMonth < 0){ viewMonth = 11; viewYear -= 1; }
+    renderMonthLabel();
+    loadSlots();
+    loadBlockedDates();
+  });
+  document.getElementById('next-month-btn').addEventListener('click', function(){
+    viewMonth += 1;
+    if(viewMonth > 11){ viewMonth = 0; viewYear += 1; }
+    renderMonthLabel();
+    loadSlots();
+    loadBlockedDates();
+  });
+
+  function monthDateRange(){
+    var start = new Date(viewYear, viewMonth, 1);
+    var end = new Date(viewYear, viewMonth + 1, 0); // last day of month
+    function toStr(d){
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    return { start: toStr(start), end: toStr(end), startObj: start, endObj: end };
+  }
+
+  /* ===================== GENERATE SLOTS FROM RULE ===================== */
+
+  document.getElementById('generate-btn').addEventListener('click', async function(){
+    var genMsg = document.getElementById('generate-msg');
+    var btn = document.getElementById('generate-btn');
+
+    var { data: ruleRows, error: ruleErr } = await sb.from('rep_slot_rules').select('*').order('created_at', { ascending: false }).limit(1);
+    if(ruleErr || !ruleRows || !ruleRows.length){
+      showMsg(genMsg, 'Save a recurring rule first.', 'error');
+      return;
+    }
+    var rule = ruleRows[0];
+
+    var { data: blocked } = await sb.from('rep_blocked_dates').select('blocked_date');
+    var blockedSet = {};
+    (blocked || []).forEach(function(b){ blockedSet[b.blocked_date] = true; });
+
+    btn.disabled = true; btn.textContent = 'Generating…';
+
+    var range = monthDateRange();
+    var candidates = [];
+    var cursor = new Date(range.startObj);
+    while(cursor <= range.endObj){
+      var isoWeekday = cursor.getDay() === 0 ? 7 : cursor.getDay(); // JS: 0=Sun -> ISO 7
+      var dateStr = cursor.getFullYear() + '-' + String(cursor.getMonth()+1).padStart(2,'0') + '-' + String(cursor.getDate()).padStart(2,'0');
+      if(rule.weekdays.indexOf(isoWeekday) !== -1 && !blockedSet[dateStr]){
+        // build time slots from start to end, stepping by slot_minutes, not including end_time itself
+        var start = rule.start_time.slice(0,5); // "15:00"
+        var end = rule.end_time.slice(0,5);     // "15:30"
+        var startMinutes = parseInt(start.slice(0,2),10)*60 + parseInt(start.slice(3,5),10);
+        var endMinutes = parseInt(end.slice(0,2),10)*60 + parseInt(end.slice(3,5),10);
+        for(var m = startMinutes; m < endMinutes; m += rule.slot_minutes){
+          var hh = String(Math.floor(m/60)).padStart(2,'0');
+          var mm = String(m%60).padStart(2,'0');
+          candidates.push({ slot_date: dateStr, slot_time: hh + ':' + mm + ':00' });
+        }
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    if(!candidates.length){
+      btn.disabled = false; btn.textContent = 'Generate Slots For This Month';
+      showMsg(genMsg, 'No slots to generate — check your rule and blocked dates for this month.', 'error');
+      return;
+    }
+
+    // Upsert: ignore conflicts on (slot_date, slot_time) so existing/booked slots are untouched
+    var { error } = await sb.from('rep_slots').upsert(candidates, { onConflict: 'slot_date,slot_time', ignoreDuplicates: true });
+
+    btn.disabled = false; btn.textContent = 'Generate Slots For This Month';
+
+    if(error){
+      showMsg(genMsg, 'Could not generate slots: ' + error.message, 'error');
+      return;
+    }
+    showMsg(genMsg, candidates.length + ' slot time(s) processed for ' + document.getElementById('month-label').textContent + '. Existing or booked slots were left untouched.', 'success');
+    loadSlots();
+  });
+
+  /* ===================== BLOCKED DATES ===================== */
+
+  async function loadBlockedDates(){
+    var listEl = document.getElementById('blocked-list');
+    var range = monthDateRange();
+
+    var { data, error } = await sb
+      .from('rep_blocked_dates')
+      .select('*')
+      .gte('blocked_date', range.start)
+      .lte('blocked_date', range.end)
+      .order('blocked_date', { ascending: true });
+
+    if(error){
+      listEl.innerHTML = '<div class="empty-note">Could not load blocked dates.</div>';
+      return;
+    }
+    if(!data || !data.length){
+      listEl.innerHTML = '<div class="empty-note">No blocked dates this month.</div>';
+      return;
+    }
+
+    listEl.innerHTML = data.map(function(b){
+      var d = new Date(b.blocked_date + 'T00:00:00');
+      var label = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+      return (
+        '<div class="blocked-item" data-date="' + b.blocked_date + '">' +
+          '<div>' + label + (b.reason ? ' — ' + b.reason : '') + '</div>' +
+          '<span class="unblock" data-date="' + b.blocked_date + '">Unblock</span>' +
+        '</div>'
+      );
+    }).join('');
+
+    listEl.querySelectorAll('.unblock').forEach(function(el){
+      el.addEventListener('click', async function(){
+        var dateStr = el.getAttribute('data-date');
+        var { error } = await sb.from('rep_blocked_dates').delete().eq('blocked_date', dateStr);
+        if(error){
+          alert('Could not unblock: ' + error.message);
+          return;
+        }
+        loadBlockedDates();
+      });
+    });
+  }
+
+  document.getElementById('add-block-btn').addEventListener('click', async function(){
+    var blockMsg = document.getElementById('block-msg');
+    var dateVal = document.getElementById('block-date').value;
+    var reasonVal = document.getElementById('block-reason').value.trim();
+
+    if(!dateVal){
+      showMsg(blockMsg, 'Pick a date to block.', 'error');
+      return;
+    }
+
+    // Check for existing bookings on that date first — warn rather than silently cancelling
+    var { data: slotsOnDate } = await sb.from('rep_slots').select('id').eq('slot_date', dateVal);
+    var slotIds = (slotsOnDate || []).map(function(s){ return s.id; });
+    var hasBooking = false;
+    if(slotIds.length){
+      var { data: bookingsOnDate } = await sb.from('rep_bookings').select('id').in('slot_id', slotIds);
+      hasBooking = !!(bookingsOnDate && bookingsOnDate.length);
+    }
+
+    if(hasBooking){
+      var proceed = confirm(
+        'This date already has a confirmed booking. Blocking it will NOT cancel the existing meeting, ' +
+        'but no new bookings will be possible on any other open slots that day.\n\nContinue blocking this date?'
+      );
+      if(!proceed) return;
+    }
+
+    var { error } = await sb.from('rep_blocked_dates').insert({ blocked_date: dateVal, reason: reasonVal || null });
+
+    if(error){
+      if(error.code === '23505'){
+        showMsg(blockMsg, 'That date is already blocked.', 'error');
+      } else {
+        showMsg(blockMsg, 'Could not block date: ' + error.message, 'error');
+      }
+      return;
+    }
+    showMsg(blockMsg, 'Date blocked.', 'success');
+    document.getElementById('block-date').value = '';
+    document.getElementById('block-reason').value = '';
+    loadBlockedDates();
+  });
+
+  /* ===================== MEETING SLOTS (view/manual add/remove) ===================== */
 
   function formatSlotWhen(dateStr, timeStr){
     // dateStr "2026-08-05", timeStr "10:30:00"
@@ -378,10 +732,13 @@
   async function loadSlots(){
     var listEl = document.getElementById('slot-list');
     var slotMsg = document.getElementById('slot-msg');
+    var range = monthDateRange();
 
     var { data: slots, error: slotsErr } = await sb
       .from('rep_slots')
       .select('*')
+      .gte('slot_date', range.start)
+      .lte('slot_date', range.end)
       .order('slot_date', { ascending: true })
       .order('slot_time', { ascending: true });
 
@@ -403,7 +760,7 @@
     (bookings || []).forEach(function(b){ bookingBySlot[b.slot_id] = b; });
 
     if(!slots || !slots.length){
-      listEl.innerHTML = '<div class="empty-note">No slots added yet. Add one above.</div>';
+      listEl.innerHTML = '<div class="empty-note">No slots for this month yet. Generate from your rule above, or add one manually below.</div>';
       return;
     }
 

@@ -227,7 +227,15 @@
       var bookedIds = {};
       bookings.forEach(function(b){ bookedIds[b.slot_id] = true; });
 
-      var openSlots = slots.filter(function(s){ return !bookedIds[s.id]; });
+      var blockedRes = await fetch(
+        SUPABASE_URL + '/rest/v1/rep_blocked_dates?select=blocked_date&blocked_date=gte.' + todayStr,
+        { headers: sbHeaders() }
+      );
+      var blockedDates = blockedRes.ok ? await blockedRes.json() : [];
+      var blockedSet = {};
+      blockedDates.forEach(function(b){ blockedSet[b.blocked_date] = true; });
+
+      var openSlots = slots.filter(function(s){ return !bookedIds[s.id] && !blockedSet[s.slot_date]; });
 
       if(!openSlots.length){
         slotsStatus.textContent = 'No open slots right now — please check back soon or contact the clinic directly.';
