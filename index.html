@@ -894,7 +894,15 @@
   /* ====================================================== */
 
   document.getElementById('rep-link').href = REP_BOOKING_URL;
-  document.getElementById('rep-period').textContent = REP_BOOKING_LABEL;
+
+  /* AUTO LABEL: "Open for <Month Year>" — switches at 10:00 AM IST on the 1st of each month */
+  function autoRepLabel(){
+    var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    // 10:00 IST == 04:30 UTC. Shift back 4.5h so the month rolls over exactly at that moment.
+    var shifted = new Date(Date.now() - (4.5 * 3600 * 1000));
+    return "Open for " + months[shifted.getUTCMonth()] + " " + shifted.getUTCFullYear();
+  }
+  document.getElementById('rep-period').textContent = autoRepLabel();
 
   document.getElementById('year').textContent = new Date().getFullYear();
 
@@ -1001,7 +1009,7 @@
 
       if(useUrl && useLabel){
         document.getElementById('rep-link').href = useUrl;
-        document.getElementById('rep-period').textContent = useLabel;
+        // Label text is auto-generated from the date (see autoRepLabel); only the link comes from the backend.
       }
     })
     .catch(function(){ /* silently keep the hardcoded fallback already set above */ });
