@@ -384,6 +384,22 @@
     display:flex; flex-direction:column; align-items:flex-start; gap:12px; flex-shrink:0;
   }
   .rep-actions .btn-ghost{ font-size:0.9rem; }
+  .clock-modal{
+    position:fixed; inset:0; z-index:200; display:none; align-items:center; justify-content:center;
+    background:rgba(15,30,50,0.55); padding:20px;
+  }
+  .clock-modal.is-open{ display:flex; }
+  .clock-card{
+    background:#fff; border-radius:16px; padding:28px 28px 24px; max-width:340px; width:100%;
+    text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.25);
+  }
+  .clock-card h4{ margin:0 0 4px; font-size:1.15rem; color:#1B4C7A; }
+  .clock-card p{ margin:0 0 14px; font-size:0.85rem; color:var(--ink-soft); }
+  .clock-card svg{ width:180px; height:180px; display:block; margin:0 auto 12px; }
+  .clock-digital{ font-family:'IBM Plex Mono', monospace; font-weight:600; color:#1B4C7A; background:#FFF9E0;
+    border-radius:8px; padding:8px 10px; margin-bottom:14px; }
+  .clock-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .clock-actions a, .clock-actions button{ font-size:0.85rem; cursor:pointer; }
   .rep-countdown{
     display:flex; flex-direction:column; gap:4px;
     padding:10px 14px; border:1px solid rgba(224,179,60,0.4); border-radius:10px;
@@ -880,6 +896,26 @@
   </div>
 </section>
 
+<div class="clock-modal" id="clock-modal" role="dialog" aria-modal="true" aria-labelledby="clock-title">
+  <div class="clock-card">
+    <h4 id="clock-title">Slots haven't opened yet</h4>
+    <p>Booking opens in</p>
+    <svg viewBox="0 0 200 200">
+      <circle cx="100" cy="100" r="92" fill="#fff" stroke="#1B4C7A" stroke-width="4"/>
+      <g id="clock-ticks" stroke="#1B4C7A" stroke-linecap="round"></g>
+      <line id="clock-h" x1="100" y1="100" x2="100" y2="58" stroke="#1B4C7A" stroke-width="6" stroke-linecap="round"/>
+      <line id="clock-m" x1="100" y1="100" x2="100" y2="34" stroke="#1B4C7A" stroke-width="4" stroke-linecap="round"/>
+      <line id="clock-s" x1="100" y1="112" x2="100" y2="28" stroke="#E0793C" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="100" cy="100" r="5" fill="#E0793C"/>
+    </svg>
+    <div class="clock-digital" id="clock-digital">--</div>
+    <div class="clock-actions">
+      <a class="btn-ghost" id="clock-current" href="#" target="_blank" rel="noopener">View current slots</a>
+      <button type="button" class="btn-primary" id="clock-close">Close</button>
+    </div>
+  </div>
+</div>
+
 <footer>
   © <span id="year"></span> Dr. Adarsh K. Venuraj — Internal Medicine, Cardiology, Diabetology &amp; Infectious Diseases
 </footer>
@@ -1004,6 +1040,8 @@
         if(Date.now() >= goLiveTime){
           useUrl = row.pending_url;
           useLabel = row.pending_label;
+        } else {
+          window.repGoLiveTime = goLiveTime; // upcoming opening -> clicking the button shows the clock popup
         }
       }
 
@@ -1013,6 +1051,63 @@
       }
     })
     .catch(function(){ /* silently keep the hardcoded fallback already set above */ });
+  })();
+
+  /* ANALOGUE CLOCK POPUP — shown on "View Available Slots" before the scheduled opening */
+  (function(){
+    var modal = document.getElementById('clock-modal');
+    var link = document.getElementById('rep-link');
+    if(!modal || !link) return;
+    var hH = document.getElementById('clock-h'), hM = document.getElementById('clock-m'), hS = document.getElementById('clock-s');
+    var digital = document.getElementById('clock-digital');
+    var currentLink = document.getElementById('clock-current');
+    var timer = null;
+
+    var ticks = document.getElementById('clock-ticks'), svgns = 'http://www.w3.org/2000/svg';
+    for(var i = 0; i < 12; i++){
+      var l = document.createElementNS(svgns, 'line');
+      l.setAttribute('x1', 100); l.setAttribute('x2', 100);
+      l.setAttribute('y1', 14); l.setAttribute('y2', i % 3 === 0 ? 26 : 20);
+      l.setAttribute('stroke-width', i % 3 === 0 ? 3 : 1.5);
+      l.setAttribute('transform', 'rotate(' + (i * 30) + ' 100 100)');
+      ticks.appendChild(l);
+    }
+
+    function pad(n){ return n < 10 ? '0' + n : '' + n; }
+    function rot(el, deg){ el.setAttribute('transform', 'rotate(' + deg + ' 100 100)'); }
+
+    function tick(){
+      var diff = window.repGoLiveTime - Date.now();
+      if(!(diff > 0)){ close(); window.location.reload(); return; }
+      var total = Math.floor(diff / 1000);
+      var d = Math.floor(total / 86400), h = Math.floor((total % 86400) / 3600),
+          m = Math.floor((total % 3600) / 60), s = total % 60;
+      // Needles show the REMAINING time (they sweep backwards as it counts down)
+      rot(hS, s * 6);
+      rot(hM, (m + s / 60) * 6);
+      rot(hH, ((h % 12) + m / 60) * 30);
+      digital.textContent = (d > 0 ? d + 'd ' : '') + pad(h) + 'h ' + pad(m) + 'm ' + pad(s) + 's';
+    }
+    function open(){
+      currentLink.href = link.href;
+      modal.classList.add('is-open');
+      tick();
+      timer = setInterval(tick, 250);
+    }
+    function close(){
+      modal.classList.remove('is-open');
+      clearInterval(timer);
+    }
+
+    link.addEventListener('click', function(e){
+      if(window.repGoLiveTime && window.repGoLiveTime > Date.now()){
+        e.preventDefault();
+        open();
+      }
+    });
+    document.getElementById('clock-close').addEventListener('click', close);
+    modal.addEventListener('click', function(e){ if(e.target === modal) close(); });
+    document.addEventListener('keydown', function(e){ if(e.key === 'Escape') close(); });
   })();
 
   /* REP BOOKING COUNTDOWN — next 1st of month, 10:00 AM IST */
